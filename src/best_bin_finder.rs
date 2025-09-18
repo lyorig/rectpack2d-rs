@@ -147,7 +147,6 @@ pub(crate) fn find_best_packing_impl<
     let max_bin = RectWH::new(input.max_bin_side, input.max_bin_side);
 
     let mut best_order: Option<&mut Vec<*mut RectXYWH>> = None;
-
     let mut best_total_inserted = -1;
     let mut best_bin = max_bin;
 
@@ -163,14 +162,12 @@ pub(crate) fn find_best_packing_impl<
         );
     }
 
-    assert!(best_order.is_some());
     root.reset(best_bin);
 
     for rr in best_order.as_mut().unwrap().iter_mut() {
         let rr = unsafe { &mut **rr };
         match root.insert(rr.into()) {
             Some(ret) => {
-                // println!("Writing {ret:?}");
                 *rr = ret;
                 if let CallbackResult::AbortPacking = (input.handle_successful_insertion)(*rr) {
                     break;
@@ -194,7 +191,7 @@ fn all_inserted(
 ) -> bool {
     for rect in ordering {
         let rect = unsafe { rect.read() };
-        if root.insert(RectWH::from_xywh(rect)).is_some() {
+        if root.insert((&rect).into()).is_some() {
             *total_inserted_area += rect.area();
         } else {
             return false;

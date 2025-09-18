@@ -35,7 +35,6 @@ impl<EmptySpacesProvider: EmptySpacesProviderTrait> EmptySpaces<EmptySpacesProvi
             let normal = Self::try_to_insert(image_rectangle, candidate_space);
 
             if normal.is_valid() {
-                // println!("insert_fn: returning self.accept_result @ iteration {i}");
                 return self.accept_result(i, image_rectangle, candidate_space, &normal);
             }
         }

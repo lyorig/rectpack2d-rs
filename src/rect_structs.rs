@@ -11,10 +11,6 @@ impl RectWH {
         Self { w, h }
     }
 
-    pub fn from_xywh(xywh: RectXYWH) -> Self {
-        Self::new(xywh.w, xywh.h)
-    }
-
     pub fn max_side(&self) -> i32 {
         self.w.max(self.h)
     }
@@ -48,10 +44,6 @@ pub struct RectXYWH {
 impl RectXYWH {
     pub fn new(x: i32, y: i32, w: i32, h: i32) -> Self {
         Self { x, y, w, h }
-    }
-
-    pub fn from_wh(wh: RectWH) -> Self {
-        Self::new(0, 0, wh.w, wh.h)
     }
 
     pub fn area(&self) -> i32 {
