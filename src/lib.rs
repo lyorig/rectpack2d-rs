@@ -26,14 +26,16 @@ mod tests {
 
         let mut root = EmptySpaces::<DefaultEmptySpaces>::default();
 
-        let input = Input {
-            max_bin_side: 4096,
-            discard_step: 4,
-            handle_successful_insertion: |_| CallbackResult::ContinuePacking,
-            handle_unsuccessful_insertion: |_| CallbackResult::AbortPacking,
-        };
-
-        let result = find_best_packing(&mut root, &mut subjects, &input);
+        let result = find_best_packing(
+            &mut root,
+            &mut subjects,
+            &Input::new(
+                4096,
+                4,
+                |_| CallbackResult::ContinuePacking,
+                |_| CallbackResult::AbortPacking,
+            ),
+        );
 
         assert_eq!(result, RectWH::new(640, 512));
         assert_eq!(
@@ -74,14 +76,16 @@ mod tests {
 
         let mut root = EmptySpaces::<DefaultEmptySpaces>::default();
 
-        let input = Input {
-            max_bin_side: 4096,
-            discard_step: 4,
-            handle_successful_insertion: |_| CallbackResult::ContinuePacking,
-            handle_unsuccessful_insertion: |_| CallbackResult::AbortPacking,
-        };
-
-        let result = find_best_packing(&mut root, &mut subjects, &input);
+        let result = find_best_packing(
+            &mut root,
+            &mut subjects,
+            &Input::new(
+                4096,
+                4,
+                |_| CallbackResult::ContinuePacking,
+                |_| CallbackResult::AbortPacking,
+            ),
+        );
 
         assert_eq!(result, RectWH::new(100, 80));
         assert_eq!(

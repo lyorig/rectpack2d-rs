@@ -13,6 +13,22 @@ pub struct Input<F: Fn(RectXYWH) -> CallbackResult, G: Fn(RectXYWH) -> CallbackR
     pub handle_unsuccessful_insertion: G,
 }
 
+impl<F: Fn(RectXYWH) -> CallbackResult, G: Fn(RectXYWH) -> CallbackResult> Input<F, G> {
+    pub fn new(
+        max_bin_side: i32,
+        discard_step: i32,
+        handle_successful_insertion: F,
+        handle_unsuccessful_insertion: G,
+    ) -> Self {
+        Self {
+            max_bin_side,
+            discard_step,
+            handle_successful_insertion,
+            handle_unsuccessful_insertion,
+        }
+    }
+}
+
 pub fn find_best_packing<
     EmptySpacesType: EmptySpacesProviderTrait,
     T,
