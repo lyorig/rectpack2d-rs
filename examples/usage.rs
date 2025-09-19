@@ -7,18 +7,25 @@ use rectpack2d_rs::{
 };
 
 fn main() {
-    let mut rects = [
+    // The rectangles you'd like to sort.
+    let mut subjects = [
         RectXYWH::from_wh(30, 40),
         RectXYWH::from_wh(256, 256),
         RectXYWH::from_wh(128, 512),
         RectXYWH::from_wh(512, 128),
     ];
 
+    // The algorithm's auxiliary storage.
+    // This one uses `DefaultEmptySpaces`, which allocates the heap via `Vec`,
+    // but there's also `StaticEmptySpaces`, which uses an array of a user-provided size.
     let mut root = EmptySpaces::<DefaultEmptySpaces>::default();
 
-    let l = find_best_packing(
+    // Run the algorithm.
+    // This will fill in the `x` and `y` components of the rectangles
+    // present in `subjects`, and return the resulting bin size.
+    let bin_size = find_best_packing(
         &mut root,
-        &mut rects,
+        &mut subjects,
         &Input::new(
             4096,
             4,
@@ -27,6 +34,6 @@ fn main() {
         ),
     );
 
-    println!("Atlas size: {:?}", l);
-    println!("Members: {:?}", rects);
+    println!("Bin size: {:?}", bin_size);
+    println!("Subjects: {:?}", subjects);
 }
