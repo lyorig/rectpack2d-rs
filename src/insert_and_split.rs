@@ -70,36 +70,14 @@ pub(crate) fn insert_and_split(im: RectWH, sp: RectXYWH) -> CreatedSplits {
     }
 
     if free_w > free_h {
-        let bigger_split = RectXYWH {
-            x: sp.x + im.w,
-            y: sp.y,
-            w: free_w,
-            h: sp.h,
-        };
-
-        let lesser_split = RectXYWH {
-            x: sp.x,
-            y: sp.y + im.h,
-            w: im.w,
-            h: free_h,
-        };
+        let bigger_split = RectXYWH::new(sp.x + im.w, sp.y, free_w, sp.h);
+        let lesser_split = RectXYWH::new(sp.x, sp.y + im.h, im.w, free_h);
 
         return CreatedSplits::split(bigger_split, lesser_split);
     }
 
-    let bigger_split = RectXYWH {
-        x: sp.x,
-        y: sp.y + im.h,
-        w: sp.w,
-        h: free_h,
-    };
-
-    let lesser_split = RectXYWH {
-        x: sp.x + im.w,
-        y: sp.y,
-        w: free_w,
-        h: im.h,
-    };
+    let bigger_split = RectXYWH::new(sp.x, sp.y + im.h, sp.w, free_h);
+    let lesser_split = RectXYWH::new(sp.x + im.w, sp.y, free_w, im.h);
 
     CreatedSplits::split(bigger_split, lesser_split)
 }

@@ -21,7 +21,7 @@ impl<EmptySpacesProvider: EmptySpacesProviderTrait> EmptySpaces<EmptySpacesProvi
     pub fn new(r: RectWH) -> Self {
         let mut ret = Self {
             current_aabb: RectWH::default(),
-            spaces: Default::default(),
+            spaces: EmptySpacesProvider::default(),
         };
 
         ret.reset(r);
@@ -76,7 +76,7 @@ impl<EmptySpacesProvider: EmptySpacesProviderTrait> EmptySpaces<EmptySpacesProvi
         self.current_aabb = Default::default();
 
         self.spaces.reset();
-        self.spaces.add(RectXYWH::new(0, 0, r.w, r.h));
+        self.spaces.add(RectXYWH::from_wh(r.w, r.h));
     }
 
     fn try_to_insert(img: RectWH, candidate_space: RectXYWH) -> CreatedSplits {

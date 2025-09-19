@@ -1,6 +1,6 @@
 pub type TotalAreaType = i32;
 
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub struct RectWH {
     pub w: i32,
     pub h: i32,
@@ -33,7 +33,7 @@ impl RectWH {
     }
 }
 
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub struct RectXYWH {
     pub x: i32,
     pub y: i32,
@@ -44,6 +44,10 @@ pub struct RectXYWH {
 impl RectXYWH {
     pub fn new(x: i32, y: i32, w: i32, h: i32) -> Self {
         Self { x, y, w, h }
+    }
+
+    pub fn from_wh(w: i32, h: i32) -> Self {
+        Self::new(0, 0, w, h)
     }
 
     pub fn area(&self) -> i32 {
