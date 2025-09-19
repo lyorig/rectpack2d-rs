@@ -141,16 +141,17 @@ pub(crate) fn find_best_packing_impl<
     G: Fn(RectXYWH) -> CallbackResult,
 >(
     root: &mut EmptySpaces<EST>,
-    orders: &mut [Vec<*mut RectXYWH>; 5],
+    orders: Box<[*mut RectXYWH]>,
+    chunk_len: usize,
     input: &Input<F, G>,
 ) -> RectWH {
     let max_bin = RectWH::new(input.max_bin_side, input.max_bin_side);
 
-    let mut best_order: Option<&mut Vec<*mut RectXYWH>> = None;
+    let mut best_order: Option<&[*mut RectXYWH]> = None;
     let mut best_total_inserted = -1;
     let mut best_bin = max_bin;
 
-    for order in orders {
+    for order in orders.chunks_exact(chunk_len) {
         for_each_order_lambda(
             root,
             order,
@@ -164,7 +165,7 @@ pub(crate) fn find_best_packing_impl<
 
     root.reset(best_bin);
 
-    for rr in best_order.as_mut().unwrap().iter_mut() {
+    for rr in best_order.unwrap().iter() {
         let rr = unsafe { &mut **rr };
         match root.insert(rr.into()) {
             Some(ret) => {
@@ -227,10 +228,10 @@ fn trial(
 
 fn for_each_order_lambda<'a>(
     root: &mut EmptySpaces<impl EmptySpacesProviderTrait>,
-    current_order: &'a mut Vec<*mut RectXYWH>,
+    current_order: &'a [*mut RectXYWH],
     max_bin: RectWH,
     discard_step: i32,
-    best_order: &mut Option<&'a mut Vec<*mut RectXYWH>>,
+    best_order: &mut Option<&'a [*mut RectXYWH]>,
     best_total_inserted: &mut i32,
     best_bin: &mut RectWH,
 ) {
