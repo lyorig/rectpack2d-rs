@@ -83,7 +83,16 @@ mod tests {
 
         let result = find_best_packing(&mut root, &mut subjects, &input);
 
-        println!("{result:?}");
-        println!("{subjects:?}",)
+        assert_eq!(result, RectWH::new(100, 80));
+        assert_eq!(
+            subjects,
+            [
+                Foo(RectXYWH::new(0, 0, 100, 40)),
+                Foo(RectXYWH::new(30, 40, 40, 20)),
+                Foo(RectXYWH::new(30, 60, 70, 20)),
+                Foo(RectXYWH::new(0, 40, 30, 40)),
+                Foo(RectXYWH::new(70, 40, 30, 20))
+            ]
+        )
     }
 }

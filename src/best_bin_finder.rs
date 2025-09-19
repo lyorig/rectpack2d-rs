@@ -119,7 +119,7 @@ fn best_packing_for_ordering(
     starting_bin: RectWH,
     discard_step: i32,
 ) -> BestPackingReturn {
-    let best_result = try_pack(
+    let mut best_result = try_pack(
         root,
         ordering,
         starting_bin,
@@ -127,9 +127,9 @@ fn best_packing_for_ordering(
         BinDimension::Both,
     );
 
-    if let BestPackingReturn::Rect(mut r) = best_result {
-        trial(root, ordering, &mut r, discard_step, BinDimension::Width);
-        trial(root, ordering, &mut r, discard_step, BinDimension::Height);
+    if let BestPackingReturn::Rect(r) = &mut best_result {
+        trial(root, ordering, r, discard_step, BinDimension::Width);
+        trial(root, ordering, r, discard_step, BinDimension::Height);
     }
 
     best_result
@@ -166,16 +166,16 @@ pub(crate) fn find_best_packing_impl<
     root.reset(best_bin);
 
     for rr in best_order.unwrap().iter() {
-        let rr = unsafe { &mut **rr };
-        match root.insert(rr.into()) {
+        let rect = unsafe { &mut **rr };
+        match root.insert(rect.into()) {
             Some(ret) => {
-                *rr = ret;
-                if let CallbackResult::AbortPacking = (input.handle_successful_insertion)(*rr) {
+                *rect = ret;
+                if let CallbackResult::AbortPacking = (input.handle_successful_insertion)(*rect) {
                     break;
                 }
             }
             None => {
-                if let CallbackResult::AbortPacking = (input.handle_unsuccessful_insertion)(*rr) {
+                if let CallbackResult::AbortPacking = (input.handle_unsuccessful_insertion)(*rect) {
                     break;
                 }
             }
@@ -190,8 +190,8 @@ fn all_inserted(
     root: &mut EmptySpaces<impl EmptySpacesProviderTrait>,
     total_inserted_area: &mut i32,
 ) -> bool {
-    for rect in ordering {
-        let rect = unsafe { rect.read() };
+    for r in ordering {
+        let rect = unsafe { r.read() };
         if root.insert((&rect).into()).is_some() {
             *total_inserted_area += rect.area();
         } else {
