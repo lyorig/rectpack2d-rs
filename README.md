@@ -6,4 +6,4 @@ This is an attempt at a functionally 1:1 Rust port of the amazing [rectpack2D](h
 - rect flipping of any kind
 - custom orders in `find_best_packing`
 
-I haven't figured out a "best practice" way to implement these, but if you're knowledgeable in the langauge, a PR will be much appreciated.
+I haven't yet figured out a "best practice" way to implement these, but if you're knowledgeable in the langauge, a PR would be much appreciated.
