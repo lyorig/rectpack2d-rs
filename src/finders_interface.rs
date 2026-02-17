@@ -42,12 +42,19 @@ pub fn find_best_packing_dont_sort<
 where
     for<'a> &'a mut T: Into<&'a mut RectXYWH>,
 {
-    let b = subjects
+    let sortable = subjects
         .iter_mut()
-        .map(|i| i.into() as _)
+        .filter_map(|f| {
+            let r: &mut RectXYWH = f.into();
+            if r.area() > 0 {
+                Some(r as *mut RectXYWH)
+            } else {
+                None
+            }
+        })
         .collect::<Box<_>>();
 
-    find_best_packing_impl(root, &b, subjects.len(), input)
+    find_best_packing_impl(root, &sortable, sortable.len(), input)
 }
 
 /// Forwards to `find_best_packing_ordered` with the following functions:
@@ -104,16 +111,16 @@ pub fn find_best_packing_ordered<
 where
     for<'a> &'a mut T: Into<&'a mut RectXYWH>,
 {
-    let mut ord = Box::<[*mut RectXYWH]>::new_uninit_slice(subjects.len() * N);
-    let (b, l) = create_box(subjects, &mut ord, orders);
+    let mut buffer = Box::<[*mut RectXYWH]>::new_uninit_slice(subjects.len() * N);
+    let (orders, chunk_size) = process_rects(subjects, &mut buffer, orders);
 
-    find_best_packing_impl(root, b, l, input)
+    find_best_packing_impl(root, orders, chunk_size, input)
 }
 
-/// Creates a [`Box`] containing all orders, contiguously.
-/// This should be a performance improvement over having
-/// several [`Vec`]s separately.
-fn create_box<'b, T, const N: usize>(
+/// Takes a slice of uninitialized rects, fills + sorts all chunks,
+/// and returns the actual usable initialized part of the slice,
+/// as well as the chunk size (a.k.a. the number of non-zero-area rects).
+fn process_rects<'b, T, const N: usize>(
     subjects: &mut [T],
     orders: &'b mut [MaybeUninit<*mut RectXYWH>],
     orderers: [fn(RectXYWH, RectXYWH) -> Ordering; N],
@@ -121,28 +128,28 @@ fn create_box<'b, T, const N: usize>(
 where
     for<'a> &'a mut T: Into<&'a mut RectXYWH>,
 {
-    let mut i = 0; // Valid rect count.
+    let mut n_valid = 0;
     for s in subjects.iter_mut() {
         let r: &mut RectXYWH = s.into();
 
         if r.area() > 0 {
-            orders[i].write(r as *mut RectXYWH);
-            i += 1;
+            orders[n_valid].write(r as *mut RectXYWH);
+            n_valid += 1;
         }
     }
 
-    let (src, tgt) = orders.split_at_mut(i);
+    let (src, tgt) = orders.split_at_mut(n_valid);
     src.sort_by(unsafe { s(orderers[0]) });
 
     for (chunk, o) in tgt
-        .chunks_exact_mut(i)
+        .chunks_exact_mut(n_valid)
         .zip(orderers.iter().skip(1).copied())
     {
         chunk.copy_from_slice(src);
         chunk.sort_by(unsafe { s(o) });
     }
 
-    (unsafe { orders[..i * N].assume_init_ref() }, i)
+    (unsafe { orders[..n_valid * N].assume_init_ref() }, n_valid)
 }
 
 /// Convenience function that converts a "user-facing" sort function
