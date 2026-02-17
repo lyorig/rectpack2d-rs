@@ -141,7 +141,7 @@ pub(crate) fn find_best_packing_impl<
     G: Fn(RectXYWH) -> CallbackResult,
 >(
     root: &mut EmptySpaces<EST>,
-    orders: Box<[*mut RectXYWH]>,
+    orders: &[*mut RectXYWH],
     chunk_len: usize,
     input: &Input<F, G>,
 ) -> RectWH {
