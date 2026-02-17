@@ -106,12 +106,6 @@ where
 {
     let mut ord = Box::<[*mut RectXYWH]>::new_uninit_slice(subjects.len() * N);
     let (b, l) = create_box(subjects, &mut ord, orders);
-    println!(
-        "[rectpack2d-rs] find_best_packing_ordered(): orig={}, boxlen={}, boxchunksize={}",
-        subjects.len(),
-        b.len(),
-        l
-    );
 
     find_best_packing_impl(root, b, l, input)
 }
@@ -133,10 +127,7 @@ where
 
         if r.area() > 0 {
             orders[i].write(r as *mut RectXYWH);
-            println!("Writing ({})", r.area());
             i += 1;
-        } else {
-            println!("Discarding ({})", r.area());
         }
     }
 
