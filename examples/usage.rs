@@ -25,7 +25,7 @@ fn main() {
     // present in `subjects`, and return the resulting bin size.
     let bin_size = find_best_packing(
         &mut root,
-        &mut subjects,
+        subjects.iter_mut(),
         &Input::new(
             4096,
             4,

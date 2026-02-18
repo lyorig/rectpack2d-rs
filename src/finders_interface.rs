@@ -30,20 +30,17 @@ impl<F: Fn(RectXYWH) -> CallbackResult, G: Fn(RectXYWH) -> CallbackResult> Input
 }
 
 pub fn find_best_packing_dont_sort<
+    'a,
     EmptySpacesType: EmptySpacesProviderTrait,
-    T,
+    T: Iterator<Item = &'a mut RectXYWH>,
     F: Fn(RectXYWH) -> CallbackResult,
     G: Fn(RectXYWH) -> CallbackResult,
 >(
     root: &mut EmptySpaces<EmptySpacesType>,
-    subjects: &mut [T],
+    subjects: T,
     input: &Input<F, G>,
-) -> RectWH
-where
-    for<'a> &'a mut T: Into<&'a mut RectXYWH>,
-{
+) -> RectWH {
     let sortable = subjects
-        .iter_mut()
         .filter_map(|f| {
             let r: &mut RectXYWH = f.into();
             if r.area() > 0 {
@@ -64,18 +61,16 @@ where
 /// - `|l, r| l.w.cmp(&r.w)`
 /// - `|l, r| l.h.cmp(&r.h)`
 pub fn find_best_packing<
+    'a,
     EmptySpacesType: EmptySpacesProviderTrait,
-    T,
+    T: Iterator<Item = &'a mut RectXYWH>,
     F: Fn(RectXYWH) -> CallbackResult,
     G: Fn(RectXYWH) -> CallbackResult,
 >(
     root: &mut EmptySpaces<EmptySpacesType>,
-    subjects: &mut [T],
+    subjects: T,
     input: &Input<F, G>,
-) -> RectWH
-where
-    for<'a> &'a mut T: Into<&'a mut RectXYWH>,
-{
+) -> RectWH {
     find_best_packing_ordered(
         root,
         subjects,
@@ -97,21 +92,20 @@ where
 /// * `input` - Settings for the algorithm.
 /// * `orders` - Ordering functions to use.
 pub fn find_best_packing_ordered<
+    'a,
     EmptySpacesType: EmptySpacesProviderTrait,
-    T,
+    T: Iterator<Item = &'a mut RectXYWH>,
     F: Fn(RectXYWH) -> CallbackResult,
     G: Fn(RectXYWH) -> CallbackResult,
     const N: usize,
 >(
     root: &mut EmptySpaces<EmptySpacesType>,
-    subjects: &mut [T],
+    subjects: T,
     input: &Input<F, G>,
     orders: [fn(RectXYWH, RectXYWH) -> Ordering; N],
-) -> RectWH
-where
-    for<'a> &'a mut T: Into<&'a mut RectXYWH>,
-{
-    let mut buffer = Box::<[*mut RectXYWH]>::new_uninit_slice(subjects.len() * N);
+) -> RectWH {
+    let size_hint = subjects.size_hint().1.expect("No upper bound on size_hint");
+    let mut buffer = Box::<[*mut RectXYWH]>::new_uninit_slice(size_hint * N);
     let (orders, chunk_size) = process_rects(subjects, &mut buffer, orders);
 
     find_best_packing_impl(root, orders, chunk_size, input)
@@ -120,16 +114,13 @@ where
 /// Takes a slice of uninitialized rects, fills + sorts all chunks,
 /// and returns the actual usable initialized part of the slice,
 /// as well as the chunk size (a.k.a. the number of non-zero-area rects).
-fn process_rects<'b, T, const N: usize>(
-    subjects: &mut [T],
+fn process_rects<'a, 'b, T: Iterator<Item = &'a mut RectXYWH>, const N: usize>(
+    subjects: T,
     orders: &'b mut [MaybeUninit<*mut RectXYWH>],
     orderers: [fn(RectXYWH, RectXYWH) -> Ordering; N],
-) -> (&'b [*mut RectXYWH], usize)
-where
-    for<'a> &'a mut T: Into<&'a mut RectXYWH>,
-{
+) -> (&'b [*mut RectXYWH], usize) {
     let mut n_valid = 0;
-    for s in subjects.iter_mut() {
+    for s in subjects {
         let r: &mut RectXYWH = s.into();
 
         if r.area() > 0 {

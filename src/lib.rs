@@ -28,7 +28,7 @@ mod tests {
 
         let result = find_best_packing(
             &mut root,
-            &mut subjects,
+            subjects.iter_mut(),
             &Input::new(
                 4096,
                 4,
@@ -78,7 +78,7 @@ mod tests {
 
         let result = find_best_packing(
             &mut root,
-            &mut subjects,
+            subjects.iter_mut().map(|f| &mut f.0),
             &Input::new(
                 4096,
                 4,
