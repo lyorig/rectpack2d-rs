@@ -86,6 +86,9 @@ pub fn find_best_packing<
 }
 
 /// Finds the best packing for a set of rectangles.
+/// Accepts any iterator that returns `&mut RectXYWH`, but its implementation
+/// of [`Iterator::size_hint()`] **must return a value as part of its upper bound**.
+/// This is important for optimizing allocations, the function panics otherwise.
 ///
 /// * `root` - Auxiliary storage for the algorithm.
 /// * `subjects` - The rectangles to pack. Their `x` and `y` components are filled in.
