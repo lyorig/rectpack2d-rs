@@ -42,9 +42,8 @@ pub fn find_best_packing_dont_sort<
 ) -> RectWH {
     let sortable = subjects
         .filter_map(|f| {
-            let r: &mut RectXYWH = f.into();
-            if r.area() > 0 {
-                Some(r as *mut RectXYWH)
+            if f.area() > 0 {
+                Some(f as *mut RectXYWH)
             } else {
                 None
             }
@@ -124,10 +123,8 @@ fn process_rects<'a, 'b, T: Iterator<Item = &'a mut RectXYWH>, const N: usize>(
 ) -> (&'b [*mut RectXYWH], usize) {
     let mut n_valid = 0;
     for s in subjects {
-        let r: &mut RectXYWH = s.into();
-
-        if r.area() > 0 {
-            orders[n_valid].write(r as *mut RectXYWH);
+        if s.area() > 0 {
+            orders[n_valid].write(s as *mut RectXYWH);
             n_valid += 1;
         }
     }

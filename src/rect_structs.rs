@@ -7,7 +7,7 @@ pub struct RectWH {
 }
 
 impl RectWH {
-    pub fn new(w: i32, h: i32) -> Self {
+    pub const fn new(w: i32, h: i32) -> Self {
         Self { w, h }
     }
 
@@ -19,11 +19,11 @@ impl RectWH {
         self.w.min(self.h)
     }
 
-    pub fn area(&self) -> i32 {
+    pub const fn area(&self) -> i32 {
         self.w * self.h
     }
 
-    pub fn perimeter(&self) -> i32 {
+    pub const fn perimeter(&self) -> i32 {
         2 * self.w + 2 * self.h
     }
 
@@ -42,19 +42,19 @@ pub struct RectXYWH {
 }
 
 impl RectXYWH {
-    pub fn new(x: i32, y: i32, w: i32, h: i32) -> Self {
+    pub const fn new(x: i32, y: i32, w: i32, h: i32) -> Self {
         Self { x, y, w, h }
     }
 
-    pub fn from_wh(w: i32, h: i32) -> Self {
+    pub const fn from_wh(w: i32, h: i32) -> Self {
         Self::new(0, 0, w, h)
     }
 
-    pub fn area(&self) -> i32 {
+    pub const fn area(&self) -> i32 {
         self.w * self.h
     }
 
-    pub fn perimeter(&self) -> i32 {
+    pub const fn perimeter(&self) -> i32 {
         2 * self.w + 2 * self.h
     }
 }
