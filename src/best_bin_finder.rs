@@ -127,7 +127,7 @@ fn best_packing_for_ordering(
         BinDimension::Both,
     );
 
-    if let BestPackingReturn::Rect(r) = &mut best_result {
+    if let BestPackingReturn::Rect(ref mut r) = best_result {
         trial(root, ordering, r, discard_step, BinDimension::Width);
         trial(root, ordering, r, discard_step, BinDimension::Height);
     }
@@ -141,16 +141,17 @@ pub(crate) fn find_best_packing_impl<
     G: Fn(RectXYWH) -> CallbackResult,
 >(
     root: &mut EmptySpaces<EST>,
-    orders: &[*mut RectXYWH],
-    chunk_len: usize,
+    order_current: &mut [*mut RectXYWH],
+    order_best: &mut [*mut RectXYWH],
     input: &Input<F, G>,
 ) -> RectWH {
     let max_bin = RectWH::new(input.max_bin_side, input.max_bin_side);
 
-    let mut best_order: Option<&[*mut RectXYWH]> = None;
+    let mut best_order_inserted = false;
     let mut best_total_inserted = -1;
     let mut best_bin = max_bin;
 
+    // TODO: For each function, sort the staging area.
     for order in orders.chunks_exact(chunk_len) {
         for_each_order_lambda(
             root,

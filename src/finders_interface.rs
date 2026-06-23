@@ -53,7 +53,7 @@ pub fn find_best_packing_dont_sort<
     find_best_packing_impl(root, &sortable, sortable.len(), input)
 }
 
-/// Forwards to `find_best_packing_ordered` with the following functions:
+/// Forwards to [`find_best_packing_ordered`] with the following functions:
 /// - `|l, r| l.area().cmp(&r.area())`
 /// - `|l, r| l.perimeter().cmp(&r.perimeter())`
 /// - `|l, r| l.w.max(l.h).cmp(&r.w.max(r.h))`
@@ -86,7 +86,7 @@ pub fn find_best_packing<
 
 /// Finds the best packing for a set of rectangles.
 /// Accepts any iterator that returns `&mut RectXYWH`, but its implementation
-/// of [`Iterator::size_hint()`] **must return a value as part of its upper bound**.
+/// of [`Iterator::size_hint`] **must return a value as part of its upper bound**.
 /// This is important for optimizing allocations, the function panics otherwise.
 ///
 /// * `root` - Auxiliary storage for the algorithm.
@@ -107,8 +107,8 @@ pub fn find_best_packing_ordered<
     orders: [fn(RectXYWH, RectXYWH) -> Ordering; N],
 ) -> RectWH {
     let size_hint = subjects.size_hint().1.expect("No upper bound on size_hint");
-    let mut buffer = Box::<[*mut RectXYWH]>::new_uninit_slice(size_hint * N);
-    let (orders, chunk_size) = process_rects(subjects, &mut buffer, orders);
+    let mut buffer = Box::<[*mut RectXYWH]>::new_uninit_slice(size_hint * 2);
+    let (master, best) = process_rects(subjects, &mut buffer, orders);
 
     find_best_packing_impl(root, orders, chunk_size, input)
 }
@@ -120,7 +120,7 @@ fn process_rects<'a, 'b, T: Iterator<Item = &'a mut RectXYWH>, const N: usize>(
     subjects: T,
     orders: &'b mut [MaybeUninit<*mut RectXYWH>],
     orderers: [fn(RectXYWH, RectXYWH) -> Ordering; N],
-) -> (&'b [*mut RectXYWH], usize) {
+) -> (&'b mut [*mut RectXYWH], &'b mut [*mut RectXYWH]) {
     let mut n_valid = 0;
     for s in subjects {
         if s.area() > 0 {
@@ -140,16 +140,20 @@ fn process_rects<'a, 'b, T: Iterator<Item = &'a mut RectXYWH>, const N: usize>(
         chunk.sort_by(unsafe { s(o) });
     }
 
-    (unsafe { orders[..n_valid * N].assume_init_ref() }, n_valid)
+    let ord = unsafe { orders[..n_valid * 2].assume_init_mut() };
+    let split = ord.split_at_mut(n_valid);
+    split.1.copy_from_slice(split.0);
+
+    split
 }
 
 /// Convenience function that converts a "user-facing" sort function
-/// to one that can be used with a slice of `MaybeUninit`. In other
+/// to one that can be used with a slice of [`MaybeUninit`]. In other
 /// words, converts from `Fn(RectXYWH, RectXYWH) -> Ordering` to
 /// `Fn(&MaybeUninit<RectXYWH>, &MaybeUninit<RectXYWH>) -> Ordering`.
 ///
 /// # Safety
-/// This function assumes that the `MaybeUninit` slice you're
+/// This function assumes that the [`MaybeUninit`] slice you're
 /// sorting with the returned function is fully initialized.
 unsafe fn s(
     func: fn(RectXYWH, RectXYWH) -> Ordering,
