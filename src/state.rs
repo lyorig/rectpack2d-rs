@@ -1,142 +1,104 @@
-use std::{cmp::Ordering, mem::MaybeUninit};
+use std::{assert_matches, cmp::Ordering, mem::MaybeUninit};
 
 use crate::{
     best_bin_finder::{BestPackingReturn, BinDimension, CallbackResult},
-    empty_spaces::{EmptySpaces, EmptySpacesProviderTrait},
+    empty_spaces::{EmptySpaces, EmptySpacesProvider},
     finders_interface::Input,
     rect_structs::{RectWH, RectXYWH},
 };
 
-pub struct State<
-    ESP: EmptySpacesProviderTrait,
-    F: Fn(RectXYWH) -> CallbackResult,
-    G: Fn(RectXYWH) -> CallbackResult,
-    const N: usize,
-> {
-    root: EmptySpaces<ESP>,
-    input: Input<F, G>,
-    best_order: Option<RectXYWH>,
+pub struct State {
+    orders: Box<[MaybeUninit<*mut RectXYWH>]>,
     max_bin: RectWH,
     best_bin: RectWH,
 
-    orders: Box<[MaybeUninit<*mut RectXYWH>]>,
-    funcs: [fn(RectXYWH, RectXYWH) -> Ordering; N],
     count: u32,
     total_inserted_area: i32,
     best_total_inserted: i32,
+
+    best_order: Option<()>,
 }
 
-impl<
-    ESP: EmptySpacesProviderTrait,
-    F: Fn(RectXYWH) -> CallbackResult,
-    G: Fn(RectXYWH) -> CallbackResult,
-    const N: usize,
-> State<ESP, F, G, N>
-{
-    fn new<'a, T: Iterator<Item = &'a mut RectXYWH>>(
-        input: Input<F, G>,
-        subjects: T,
-        orders: [fn(RectXYWH, RectXYWH) -> Ordering; N],
-    ) -> Self {
+impl State {
+    pub fn new<'a, T: Iterator<Item = &'a mut RectXYWH>>(subjects: T) -> Self {
         let len = subjects
             .size_hint()
             .1
             .expect("Upper bound required on iterator");
-        let mut bx = Box::new_uninit_slice(len);
-        let actual_len = process_rects(subjects, &mut bx, &orders);
+
+        let mut bx = Box::new_uninit_slice(len * 2);
+        let actual_len = process_rects(subjects, &mut bx);
 
         Self {
-            input,
             orders: bx,
             count: actual_len as _,
-            funcs: orders,
             total_inserted_area: 0,
-            root: Default::default(),
             best_order: Default::default(),
             max_bin: Default::default(),
             best_bin: Default::default(),
-            best_total_inserted: 0,
+            best_total_inserted: -1,
         }
     }
 
-    pub fn find_best_packing_impl(&mut self) -> RectWH {
-        for func in self.funcs {
-            self.for_each_order_lambda();
-            self.order_staging().sort_by(unsafe { s(func) });
-        }
-
-        self.root.reset(self.best_bin);
-
-        // TODO(perf): eliminate this allocation while satisfying borrowck.
-        for rr in self.order_best().to_owned() {
-            let rect = unsafe { rr.assume_init().as_mut_unchecked() };
-            match self.root.insert(rect.into()) {
-                Some(ret) => {
-                    *rect = ret;
-                    if let CallbackResult::AbortPacking =
-                        (self.input.handle_successful_insertion)(*rect)
-                    {
-                        break;
-                    }
-                }
-                None => {
-                    if let CallbackResult::AbortPacking =
-                        (self.input.handle_unsuccessful_insertion)(*rect)
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-
-        self.root.get_rects_aabb()
-    }
-
-    fn for_each_order_lambda(&mut self) {
-        match self.best_packing_for_ordering() {
-            BestPackingReturn::TotalArea(total_inserted) => {
+    fn for_each_order_lambda<ESP: EmptySpacesProvider>(
+        &mut self,
+        root: &mut EmptySpaces<ESP>,
+        discard_step: i32,
+    ) -> bool {
+        match self.best_packing_for_ordering(root, discard_step) {
+            BestPackingReturn::TotalArea => {
+                let total_inserted = self.total_inserted_area;
                 if self.best_order.is_none() && total_inserted > self.best_total_inserted {
-                    self.order_best().copy_from_slice(self.order_staging());
                     self.best_total_inserted = total_inserted;
+                    return true;
                 }
             }
             BestPackingReturn::Rect(result_bin) => {
-                if result_bin.area() <= best_bin.area() {
-                    self.best_order = Some(current_order);
+                if result_bin.area() <= self.best_bin.area() {
                     self.best_bin = result_bin;
+                    return true;
                 }
             }
         }
+
+        false
     }
 
-    fn best_packing_for_ordering(&mut self) -> BestPackingReturn {
-        let best_result = self.try_pack(self.max_bin, BinDimension::Both);
+    fn best_packing_for_ordering<ESP: EmptySpacesProvider>(
+        &mut self,
+        root: &mut EmptySpaces<ESP>,
+        discard_step: i32,
+    ) -> BestPackingReturn {
+        let best_result = self.try_pack(root, self.max_bin, BinDimension::Both, discard_step);
 
-        if let BestPackingReturn::Rect(_) = best_result {
-            self.trial(BinDimension::Width);
-            self.trial(BinDimension::Height);
+        if let BestPackingReturn::Rect(ref _better) = best_result {
+            self.trial(root, BinDimension::Width, discard_step);
+            self.trial(root, BinDimension::Height, discard_step);
         }
 
         best_result
     }
 
-    fn try_pack(
+    fn try_pack<ESP: EmptySpacesProvider>(
         &mut self,
+        root: &mut EmptySpaces<ESP>,
         starting_bin: RectWH,
         tried_dimension: BinDimension,
+        discard_step: i32,
     ) -> BestPackingReturn {
-        self.best_packing_for_ordering_impl(starting_bin, tried_dimension)
+        self.best_packing_for_ordering_impl(root, starting_bin, tried_dimension, discard_step)
     }
 
-    fn best_packing_for_ordering_impl(
+    fn best_packing_for_ordering_impl<ESP: EmptySpacesProvider>(
         &mut self,
+        root: &mut EmptySpaces<ESP>,
         starting_bin: RectWH,
         tried_dimension: BinDimension,
+        mut discard_step: i32,
     ) -> BestPackingReturn {
         let mut candidate_bin = starting_bin;
         let mut tries_before_discarding = 0;
 
-        let mut discard_step = self.input.discard_step;
         if discard_step <= 0 {
             tries_before_discarding = -discard_step;
             discard_step = 1
@@ -163,9 +125,9 @@ impl<
 
         let mut step = starting_step;
         loop {
-            self.root.reset(candidate_bin);
+            root.reset(candidate_bin);
 
-            if self.all_inserted() {
+            if self.all_inserted(root) {
                 if step <= discard_step {
                     if tries_before_discarding > 0 {
                         tries_before_discarding -= 1;
@@ -187,7 +149,7 @@ impl<
                     }
                 }
 
-                self.root.reset(candidate_bin);
+                root.reset(candidate_bin);
             } else {
                 match tried_dimension {
                     BinDimension::Both => {
@@ -195,21 +157,21 @@ impl<
                         candidate_bin.h += step;
 
                         if candidate_bin.area() > starting_bin.area() {
-                            return BestPackingReturn::TotalArea(self.total_inserted_area);
+                            return BestPackingReturn::TotalArea;
                         }
                     }
                     BinDimension::Width => {
                         candidate_bin.w += step;
 
                         if candidate_bin.w > starting_bin.w {
-                            return BestPackingReturn::TotalArea(self.total_inserted_area);
+                            return BestPackingReturn::TotalArea;
                         }
                     }
                     BinDimension::Height => {
                         candidate_bin.h += step;
 
                         if candidate_bin.h > starting_bin.h {
-                            return BestPackingReturn::TotalArea(self.total_inserted_area);
+                            return BestPackingReturn::TotalArea;
                         }
                     }
                 }
@@ -219,11 +181,13 @@ impl<
         }
     }
 
-    fn all_inserted(&mut self) -> bool {
+    fn all_inserted<ESP: EmptySpacesProvider>(&mut self, root: &mut EmptySpaces<ESP>) -> bool {
+        self.total_inserted_area = 0;
+
         // TODO(perf): eliminate this allocation while satisfying borrowck.
-        for r in self.order_best().to_owned() {
+        for r in self.order_staging().to_owned() {
             let rect = unsafe { r.assume_init().read() };
-            if self.root.insert((&rect).into()).is_some() {
+            if root.insert((&rect).into()).is_some() {
                 self.total_inserted_area += rect.area();
             } else {
                 return false;
@@ -241,20 +205,114 @@ impl<
         &mut self.orders[..self.count as usize]
     }
 
-    fn trial(&mut self, tried_dimension: BinDimension) {
-        if let BestPackingReturn::Rect(better) = self.try_pack(self.best_bin, tried_dimension) {
+    fn trial<ESP: EmptySpacesProvider>(
+        &mut self,
+        root: &mut EmptySpaces<ESP>,
+
+        tried_dimension: BinDimension,
+        discard_step: i32,
+    ) {
+        if let BestPackingReturn::Rect(better) =
+            self.try_pack(root, self.best_bin, tried_dimension, discard_step)
+        {
             self.best_bin = better;
         }
     }
+
+    pub fn find_best_packing_ordered<
+        ESP: EmptySpacesProvider,
+        F: Fn(RectXYWH) -> CallbackResult,
+        G: Fn(RectXYWH) -> CallbackResult,
+    >(
+        &mut self,
+        root: &mut EmptySpaces<ESP>,
+        input: &Input<F, G>,
+        orders: &[fn(RectXYWH, RectXYWH) -> Ordering],
+    ) -> RectWH {
+        for func in orders.iter().copied() {
+            self.order_staging().sort_by(unsafe { s(func) });
+            if self.for_each_order_lambda(root, input.discard_step) {
+                self.copy_best();
+                self.best_order = Some(());
+            }
+        }
+
+        assert_matches!(self.best_order, Some(()));
+
+        root.reset(self.best_bin);
+
+        // TODO(perf): eliminate this allocation while satisfying borrowck.
+        for rr in self.order_best().to_owned() {
+            let rect = unsafe { rr.assume_init().as_mut_unchecked() };
+
+            match root.insert(rect.into()) {
+                Some(ret) => {
+                    *rect = ret;
+                    if let CallbackResult::AbortPacking = (input.handle_successful_insertion)(*rect)
+                    {
+                        break;
+                    }
+                }
+                None => {
+                    if let CallbackResult::AbortPacking =
+                        (input.handle_unsuccessful_insertion)(*rect)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        root.get_rects_aabb()
+    }
+
+    pub fn find_best_packing_dont_sort<
+        ESP: EmptySpacesProvider,
+        F: Fn(RectXYWH) -> CallbackResult,
+        G: Fn(RectXYWH) -> CallbackResult,
+    >(
+        &mut self,
+        root: &mut EmptySpaces<ESP>,
+        i: &Input<F, G>,
+    ) -> RectWH {
+        _ = self.for_each_order_lambda(root, i.discard_step);
+
+        root.reset(self.best_bin);
+
+        // TODO(perf): eliminate this allocation while satisfying borrowck.
+        for rr in self.order_best().to_owned() {
+            let rect = unsafe { rr.assume_init().as_mut_unchecked() };
+
+            match root.insert(rect.into()) {
+                Some(ret) => {
+                    *rect = ret;
+                    if let CallbackResult::AbortPacking = (i.handle_successful_insertion)(*rect) {
+                        break;
+                    }
+                }
+                None => {
+                    if let CallbackResult::AbortPacking = (i.handle_unsuccessful_insertion)(*rect) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        root.get_rects_aabb()
+    }
+
+    fn copy_best(&mut self) {
+        // TODO: use unchecked variant.
+        let (staging, best) = self.orders.split_at_mut(self.count as _);
+        best.copy_from_slice(staging)
+    }
 }
 
-/// Takes a slice of uninitialized rects, fills + sorts all chunks,
-/// and returns the actual usable initialized part of the slice,
-/// as well as the chunk size (a.k.a. the number of non-zero-area rects).
+/// Takes a slice of uninitialized rects, fills it with non-zero rects,
+/// and returns their count.
 fn process_rects<'a, 'b, T: Iterator<Item = &'a mut RectXYWH>>(
     subjects: T,
     orders: &'b mut [MaybeUninit<*mut RectXYWH>],
-    orderers: &[fn(RectXYWH, RectXYWH) -> Ordering],
 ) -> usize {
     let mut n_valid = 0;
     for s in subjects {
@@ -263,21 +321,6 @@ fn process_rects<'a, 'b, T: Iterator<Item = &'a mut RectXYWH>>(
             n_valid += 1;
         }
     }
-
-    let (src, tgt) = orders.split_at_mut(n_valid);
-    src.sort_by(unsafe { s(orderers[0]) });
-
-    for (chunk, o) in tgt
-        .chunks_exact_mut(n_valid)
-        .zip(orderers.iter().skip(1).copied())
-    {
-        chunk.copy_from_slice(src);
-        chunk.sort_by(unsafe { s(o) });
-    }
-
-    let ord = unsafe { orders[..n_valid * 2].assume_init_mut() };
-    let split = ord.split_at_mut(n_valid);
-    split.1.copy_from_slice(split.0);
 
     n_valid
 }
