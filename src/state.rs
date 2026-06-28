@@ -1,4 +1,4 @@
-use std::{assert_matches, cmp::Ordering, mem::MaybeUninit};
+use std::{cmp::Ordering, mem::MaybeUninit};
 
 use crate::{
     best_bin_finder::{BestPackingReturn, BinDimension, CallbackResult},
@@ -16,7 +16,7 @@ pub struct State {
     total_inserted_area: i32,
     best_total_inserted: i32,
 
-    best_order: Option<()>,
+    has_best_order: bool,
 }
 
 impl State {
@@ -33,7 +33,7 @@ impl State {
             orders: bx,
             count: actual_len as _,
             total_inserted_area: 0,
-            best_order: Default::default(),
+            has_best_order: false,
             max_bin: Default::default(),
             best_bin: Default::default(),
             best_total_inserted: -1,
@@ -48,7 +48,7 @@ impl State {
         match self.best_packing_for_ordering(root, discard_step) {
             BestPackingReturn::TotalArea => {
                 let total_inserted = self.total_inserted_area;
-                if self.best_order.is_none() && total_inserted > self.best_total_inserted {
+                if !self.has_best_order && total_inserted > self.best_total_inserted {
                     self.best_total_inserted = total_inserted;
                     return true;
                 }
@@ -71,9 +71,9 @@ impl State {
     ) -> BestPackingReturn {
         let best_result = self.try_pack(root, self.max_bin, BinDimension::Both, discard_step);
 
-        if let BestPackingReturn::Rect(ref _better) = best_result {
-            self.trial(root, BinDimension::Width, discard_step);
-            self.trial(root, BinDimension::Height, discard_step);
+        if let BestPackingReturn::Rect(better) = best_result {
+            self.trial(root, better, BinDimension::Width, discard_step);
+            self.trial(root, better, BinDimension::Height, discard_step);
         }
 
         best_result
@@ -208,12 +208,12 @@ impl State {
     fn trial<ESP: EmptySpacesProvider>(
         &mut self,
         root: &mut EmptySpaces<ESP>,
-
+        rect: RectWH,
         tried_dimension: BinDimension,
         discard_step: i32,
     ) {
         if let BestPackingReturn::Rect(better) =
-            self.try_pack(root, self.best_bin, tried_dimension, discard_step)
+            self.try_pack(root, rect, tried_dimension, discard_step)
         {
             self.best_bin = better;
         }
@@ -233,11 +233,11 @@ impl State {
             self.order_staging().sort_by(unsafe { s(func) });
             if self.for_each_order_lambda(root, input.discard_step) {
                 self.copy_best();
-                self.best_order = Some(());
+                self.has_best_order = true;
             }
         }
 
-        assert_matches!(self.best_order, Some(()));
+        assert!(self.has_best_order);
 
         root.reset(self.best_bin);
 
