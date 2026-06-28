@@ -92,10 +92,10 @@ mod tests {
             subjects,
             [
                 Foo(RectXYWH::new(0, 0, 100, 40)),
-                Foo(RectXYWH::new(30, 40, 40, 20)),
-                Foo(RectXYWH::new(30, 60, 70, 20)),
+                Foo(RectXYWH::new(30, 60, 40, 20)),
+                Foo(RectXYWH::new(30, 40, 70, 20)),
                 Foo(RectXYWH::new(0, 40, 30, 40)),
-                Foo(RectXYWH::new(70, 40, 30, 20))
+                Foo(RectXYWH::new(70, 60, 30, 20))
             ]
         )
     }

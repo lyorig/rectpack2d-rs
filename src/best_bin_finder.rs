@@ -20,6 +20,52 @@ pub(crate) enum BestPackingReturn {
     Rect(RectWH),
 }
 
+/// Shared algorithm state used during bin-packing search.
+///
+/// Tracks the best bin found so far, the total area inserted for that bin,
+/// and which ordering produced it. Functions that previously accepted many
+/// `&mut` parameters now receive `&mut self` instead.
+struct Finder<'a> {
+    best_bin: RectWH,
+    best_total_inserted: i32,
+    best_order: Option<&'a [*mut RectXYWH]>,
+}
+
+impl<'a> Finder<'a> {
+    fn new(max_bin: RectWH) -> Self {
+        Self {
+            best_bin: max_bin,
+            best_total_inserted: -1,
+            best_order: None,
+        }
+    }
+
+    /// Evaluate a single ordering: run the packing algorithm for this ordering
+    /// and update the best-known result if this one is better.
+    fn evaluate_order(
+        &mut self,
+        root: &mut EmptySpaces<impl EmptySpacesProviderTrait>,
+        current_order: &'a [*mut RectXYWH],
+        max_bin: RectWH,
+        discard_step: i32,
+    ) {
+        match best_packing_for_ordering(root, current_order, max_bin, discard_step) {
+            BestPackingReturn::TotalArea(total_inserted) => {
+                if self.best_order.is_none() && total_inserted > self.best_total_inserted {
+                    self.best_order = Some(current_order);
+                    self.best_total_inserted = total_inserted;
+                }
+            }
+            BestPackingReturn::Rect(result_bin) => {
+                if result_bin.area() <= self.best_bin.area() {
+                    self.best_order = Some(current_order);
+                    self.best_bin = result_bin;
+                }
+            }
+        }
+    }
+}
+
 fn best_packing_for_ordering_impl(
     root: &mut EmptySpaces<impl EmptySpacesProviderTrait>,
     ordering: &[*mut RectXYWH],
@@ -136,36 +182,26 @@ fn best_packing_for_ordering(
 }
 
 pub(crate) fn find_best_packing_impl<
+    'a,
     EST: EmptySpacesProviderTrait,
     F: Fn(RectXYWH) -> CallbackResult,
     G: Fn(RectXYWH) -> CallbackResult,
 >(
     root: &mut EmptySpaces<EST>,
-    orders: &[*mut RectXYWH],
+    orders: &'a [*mut RectXYWH],
     chunk_len: usize,
     input: &Input<F, G>,
 ) -> RectWH {
     let max_bin = RectWH::new(input.max_bin_side, input.max_bin_side);
-
-    let mut best_order: Option<&[*mut RectXYWH]> = None;
-    let mut best_total_inserted = -1;
-    let mut best_bin = max_bin;
+    let mut finder = Finder::new(max_bin);
 
     for order in orders.chunks_exact(chunk_len) {
-        for_each_order_lambda(
-            root,
-            order,
-            max_bin,
-            input.discard_step,
-            &mut best_order,
-            &mut best_total_inserted,
-            &mut best_bin,
-        );
+        finder.evaluate_order(root, order, max_bin, input.discard_step);
     }
 
-    root.reset(best_bin);
+    root.reset(finder.best_bin);
 
-    for rr in best_order.unwrap().iter() {
+    for rr in finder.best_order.unwrap().iter() {
         let rect = unsafe { &mut **rr };
         match root.insert(rect.into()) {
             Some(ret) => {
@@ -223,30 +259,5 @@ fn trial(
         try_pack(root, ordering, *best_bin, discard_step, tried_dimension)
     {
         *best_bin = better;
-    }
-}
-
-fn for_each_order_lambda<'a>(
-    root: &mut EmptySpaces<impl EmptySpacesProviderTrait>,
-    current_order: &'a [*mut RectXYWH],
-    max_bin: RectWH,
-    discard_step: i32,
-    best_order: &mut Option<&'a [*mut RectXYWH]>,
-    best_total_inserted: &mut i32,
-    best_bin: &mut RectWH,
-) {
-    match best_packing_for_ordering(root, current_order, max_bin, discard_step) {
-        BestPackingReturn::TotalArea(total_inserted) => {
-            if best_order.is_none() && total_inserted > *best_total_inserted {
-                *best_order = Some(current_order);
-                *best_total_inserted = total_inserted;
-            }
-        }
-        BestPackingReturn::Rect(result_bin) => {
-            if result_bin.area() <= best_bin.area() {
-                *best_order = Some(current_order);
-                *best_bin = result_bin;
-            }
-        }
     }
 }
