@@ -3,7 +3,7 @@ use crate::{
     rect_structs::{RectWH, RectXYWH},
 };
 
-pub trait EmptySpacesProviderTrait: Default {
+pub trait EmptySpacesProvider: Default {
     fn reset(&mut self);
     fn get(&self, i: usize) -> RectXYWH;
     fn get_count(&self) -> usize;
@@ -12,16 +12,16 @@ pub trait EmptySpacesProviderTrait: Default {
 }
 
 #[derive(Default)]
-pub struct EmptySpaces<EmptySpacesProvider: EmptySpacesProviderTrait> {
+pub struct EmptySpaces<ESP: EmptySpacesProvider> {
     current_aabb: RectWH,
-    spaces: EmptySpacesProvider,
+    spaces: ESP,
 }
 
-impl<EmptySpacesProvider: EmptySpacesProviderTrait> EmptySpaces<EmptySpacesProvider> {
+impl<ESP: EmptySpacesProvider> EmptySpaces<ESP> {
     pub fn new(r: RectWH) -> Self {
         let mut ret = Self {
             current_aabb: RectWH::default(),
-            spaces: EmptySpacesProvider::default(),
+            spaces: ESP::default(),
         };
 
         ret.reset(r);
@@ -87,7 +87,7 @@ impl<EmptySpacesProvider: EmptySpacesProviderTrait> EmptySpaces<EmptySpacesProvi
         self.current_aabb
     }
 
-    pub fn get_spaces(&self) -> &EmptySpacesProvider {
+    pub fn get_spaces(&self) -> &ESP {
         &self.spaces
     }
 }

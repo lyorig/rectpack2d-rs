@@ -1,11 +1,11 @@
-use crate::{empty_spaces::EmptySpacesProviderTrait, rect_structs::RectXYWH};
+use crate::{empty_spaces::EmptySpacesProvider, rect_structs::RectXYWH};
 
 #[derive(Default)]
 pub struct DefaultEmptySpaces {
     empty_spaces: Vec<RectXYWH>,
 }
 
-impl EmptySpacesProviderTrait for DefaultEmptySpaces {
+impl EmptySpacesProvider for DefaultEmptySpaces {
     fn reset(&mut self) {
         self.empty_spaces.clear();
     }
@@ -43,7 +43,7 @@ impl<const MAX_SPACES: usize> Default for StaticEmptySpaces<MAX_SPACES> {
     }
 }
 
-impl<const MAX_SPACES: usize> EmptySpacesProviderTrait for StaticEmptySpaces<MAX_SPACES> {
+impl<const MAX_SPACES: usize> EmptySpacesProvider for StaticEmptySpaces<MAX_SPACES> {
     fn reset(&mut self) {
         self.count_spaces = 0
     }
