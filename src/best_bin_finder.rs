@@ -264,7 +264,9 @@ impl Solver {
     }
 
     fn copy_best(&mut self) {
-        let (current, best) = self.orders.split_at_mut(self.count);
+        let orders = &mut self.orders[..self.count * 2];
+        let (current, best) = orders.split_at_mut(self.count);
+
         best.copy_from_slice(current);
     }
 
@@ -279,18 +281,18 @@ impl Solver {
     }
 
     fn order_best(&self) -> &[*mut RectXYWH] {
-        let slice = &self.orders[self.count..];
+        let slice = &self.orders[self.count..self.count * 2];
         unsafe { std::mem::transmute(slice) }
     }
 
     pub fn find_best_packing_ordered<
         'a,
-        EmptySpacesType: EmptySpacesProvider,
+        ESP: EmptySpacesProvider,
         F: Fn(RectXYWH) -> CallbackResult,
         G: Fn(RectXYWH) -> CallbackResult,
     >(
         &mut self,
-        root: &mut EmptySpaces<EmptySpacesType>,
+        root: &mut EmptySpaces<ESP>,
         input: &Input<F, G>,
         orders: &[fn(&RectXYWH, &RectXYWH) -> Ordering],
     ) -> RectWH {
@@ -308,7 +310,6 @@ impl Solver {
 
         root.reset(finder.best_bin);
 
-        // TODO: Replace with Self::order_best().
         for rr in self.order_best().iter().copied() {
             let rect = unsafe { rr.as_mut_unchecked() };
             match root.insert(rect.into()) {
