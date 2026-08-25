@@ -6,7 +6,7 @@ use crate::{
 pub trait EmptySpacesProvider: Default {
     fn reset(&mut self);
     fn get(&self, i: usize) -> RectXYWH;
-    fn get_count(&self) -> usize;
+    fn count(&self) -> usize;
     fn remove(&mut self, i: usize);
     fn add(&mut self, rect: RectXYWH) -> bool;
 }
@@ -30,7 +30,7 @@ impl<ESP: EmptySpacesProvider> EmptySpaces<ESP> {
     }
 
     pub fn insert(&mut self, image_rectangle: RectWH) -> Option<RectXYWH> {
-        for i in (0..self.spaces.get_count()).rev() {
+        for i in (0..self.spaces.count()).rev() {
             let candidate_space = self.spaces.get(i);
             let normal = Self::try_to_insert(image_rectangle, candidate_space);
 
@@ -83,11 +83,11 @@ impl<ESP: EmptySpacesProvider> EmptySpaces<ESP> {
         insert_and_split(img, candidate_space)
     }
 
-    pub fn get_rects_aabb(&self) -> RectWH {
+    pub fn rects_aabb(&self) -> RectWH {
         self.current_aabb
     }
 
-    pub fn get_spaces(&self) -> &ESP {
+    pub fn spaces(&self) -> &ESP {
         &self.spaces
     }
 }

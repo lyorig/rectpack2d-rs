@@ -14,7 +14,7 @@ impl EmptySpacesProvider for DefaultEmptySpaces {
         self.empty_spaces[i]
     }
 
-    fn get_count(&self) -> usize {
+    fn count(&self) -> usize {
         self.empty_spaces.len()
     }
 
@@ -52,7 +52,7 @@ impl<const MAX_SPACES: usize> EmptySpacesProvider for StaticEmptySpaces<MAX_SPAC
         self.empty_spaces[i]
     }
 
-    fn get_count(&self) -> usize {
+    fn count(&self) -> usize {
         self.count_spaces
     }
 

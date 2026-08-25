@@ -44,7 +44,7 @@ impl Finder {
     pub fn evaluate_order(
         &mut self,
         root: &mut EmptySpaces<impl EmptySpacesProvider>,
-        current_order: &[&mut RectXYWH],
+        current_order: &[&RectXYWH],
         max_bin: RectWH,
         discard_step: i32,
     ) -> bool {
@@ -70,7 +70,7 @@ impl Finder {
 
     fn best_packing_for_ordering_impl(
         root: &mut EmptySpaces<impl EmptySpacesProvider>,
-        current_order: &[&mut RectXYWH],
+        current_order: &[&RectXYWH],
         starting_bin: RectWH,
         mut discard_step: i32,
         tried_dimension: BinDimension,
@@ -163,7 +163,7 @@ impl Finder {
 
     fn best_packing_for_ordering(
         root: &mut EmptySpaces<impl EmptySpacesProvider>,
-        ordering: &[&mut RectXYWH],
+        ordering: &[&RectXYWH],
         starting_bin: RectWH,
         discard_step: i32,
     ) -> BestPackingReturn {
@@ -184,7 +184,7 @@ impl Finder {
     }
 
     fn all_inserted(
-        ordering: &[&mut RectXYWH],
+        ordering: &[&RectXYWH],
         root: &mut EmptySpaces<impl EmptySpacesProvider>,
         total_inserted_area: &mut i32,
     ) -> bool {
@@ -202,7 +202,7 @@ impl Finder {
 
     fn try_pack(
         root: &mut EmptySpaces<impl EmptySpacesProvider>,
-        ordering: &[&mut RectXYWH],
+        ordering: &[&RectXYWH],
         starting_bin: RectWH,
         discard_step: i32,
         tried_dimension: BinDimension,
@@ -218,7 +218,7 @@ impl Finder {
 
     fn trial(
         root: &mut EmptySpaces<impl EmptySpacesProvider>,
-        ordering: &[&mut RectXYWH],
+        ordering: &[&RectXYWH],
         best_bin: &mut RectWH,
         discard_step: i32,
         tried_dimension: BinDimension,
@@ -270,7 +270,7 @@ impl Solver {
         best.copy_from_slice(current);
     }
 
-    fn order_current(&self) -> &[&mut RectXYWH] {
+    fn order_current(&self) -> &[&RectXYWH] {
         let slice = &self.orders[..self.count];
         unsafe { std::mem::transmute(slice) }
     }
@@ -286,7 +286,6 @@ impl Solver {
     }
 
     pub fn find_best_packing_ordered<
-        'a,
         ESP: EmptySpacesProvider,
         F: Fn(RectXYWH) -> CallbackResult,
         G: Fn(RectXYWH) -> CallbackResult,
@@ -330,6 +329,6 @@ impl Solver {
             }
         }
 
-        root.get_rects_aabb()
+        root.rects_aabb()
     }
 }

@@ -47,7 +47,12 @@ pub fn find_best_packing_dont_sort<
     let max_bin = RectWH::new(input.max_bin_side, input.max_bin_side);
     let mut finder = Finder::new(max_bin);
 
-    _ = finder.evaluate_order(root, &sortable, max_bin, input.discard_step);
+    _ = finder.evaluate_order(
+        root,
+        unsafe { std::mem::transmute(sortable.as_ref()) },
+        max_bin,
+        input.discard_step,
+    );
 
     assert!(finder.best_order.is_some());
 
@@ -69,7 +74,7 @@ pub fn find_best_packing_dont_sort<
         }
     }
 
-    root.get_rects_aabb()
+    root.rects_aabb()
 }
 
 /// Forwards to `find_best_packing_ordered` with the following functions:
