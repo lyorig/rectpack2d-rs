@@ -37,14 +37,14 @@ mod tests {
             ),
         );
 
-        assert_eq!(result, RectWH::new(640, 512));
+        assert_eq!(result, RectWH::new(542, 640));
         assert_eq!(
             subjects,
             [
-                RectXYWH::new(128, 384, 30, 40),
-                RectXYWH::new(128, 0, 256, 256),
-                RectXYWH::new(0, 0, 128, 512),
-                RectXYWH::new(128, 256, 512, 128),
+                RectXYWH::new(0, 0, 30, 40),
+                RectXYWH::new(30, 128, 256, 256),
+                RectXYWH::new(286, 128, 128, 512),
+                RectXYWH::new(30, 0, 512, 128),
             ]
         )
     }
@@ -87,15 +87,15 @@ mod tests {
             ),
         );
 
-        assert_eq!(result, RectWH::new(100, 80));
+        assert_eq!(result, RectWH::new(100, 120));
         assert_eq!(
             subjects,
             [
-                Foo(RectXYWH::new(0, 0, 100, 40)),
-                Foo(RectXYWH::new(30, 60, 40, 20)),
-                Foo(RectXYWH::new(30, 40, 70, 20)),
-                Foo(RectXYWH::new(0, 40, 30, 40)),
-                Foo(RectXYWH::new(70, 60, 30, 20))
+                Foo(RectXYWH::new(0, 80, 100, 40)),
+                Foo(RectXYWH::new(30, 20, 40, 20)),
+                Foo(RectXYWH::new(0, 60, 70, 20)),
+                Foo(RectXYWH::new(0, 20, 30, 40)),
+                Foo(RectXYWH::new(0, 0, 30, 20))
             ]
         )
     }
