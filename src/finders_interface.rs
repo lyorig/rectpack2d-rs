@@ -50,7 +50,7 @@ pub fn find_best_packing_dont_sort<
     _ = finder.evaluate_order(
         root,
         // SAFETY: `&[&mut T]` and `&[&T]` have the same representation.
-        unsafe { std::mem::transmute(sortable.as_ref()) },
+        unsafe { std::mem::transmute::<&[&mut RectXYWH], &[&RectXYWH]>(sortable.as_ref()) },
         max_bin,
         input.discard_step,
     );
